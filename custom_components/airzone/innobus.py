@@ -194,8 +194,13 @@ class InnobusZone(ClimateEntity):
         self._state_attrs.update(
                 {key: self._extract_value_from_attribute(self._airzone_zone, value) for
                  key, value in self._available_attributes.items()})
-        self._attr_max_temp = self._airzone_zone.max_temp
-        self._attr_min_temp = self._airzone_zone.min_temp
+        # Some Innobus firmwares map the min/max setpoint modbus registers
+        # the other way around, which results in an inverted temperature
+        # range in Home Assistant. Normalize so min is always <= max.
+        zone_min = self._airzone_zone.min_temp
+        zone_max = self._airzone_zone.max_temp
+        self._attr_min_temp = min(zone_min, zone_max)
+        self._attr_max_temp = max(zone_min, zone_max)
         _LOGGER.debug(str(self._airzone_zone))
 
     @staticmethod
