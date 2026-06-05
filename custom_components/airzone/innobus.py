@@ -196,13 +196,19 @@ class InnobusZone(ClimateEntity):
                  key, value in self._available_attributes.items()})
         self._attr_max_temp = self._airzone_zone.max_temp
         self._attr_min_temp = self._airzone_zone.min_temp
-        # Temporary diagnostic: dump the raw zone modbus registers so we can
-        # locate which register actually holds the max setpoint on this
-        # firmware (the library assumes register 2, which reads wrong here).
+        # Temporary diagnostic: per the official Airzone Modbus map the
+        # set-point min/max limits live in SYSTEM registers 25 and 26, not in
+        # the per-zone registers the library reads. Log both so we can confirm
+        # where the real values (e.g. 25.0 / 28.0) actually are.
+        try:
+            system_regs = self._airzone_zone._machine.read_registers(25, 2)
+        except Exception as err:  # noqa: BLE001 - diagnostic only
+            system_regs = "read failed: %s" % err
         _LOGGER.warning(
-            "Airzone innobus zone %s raw registers: %s",
+            "Airzone innobus zone %s: zone_state=%s | system regs[25,26]=%s",
             self._airzone_zone._zone_id,
             self._airzone_zone.zone_state,
+            system_regs,
         )
         _LOGGER.debug(str(self._airzone_zone))
 
