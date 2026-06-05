@@ -194,22 +194,22 @@ class InnobusZone(ClimateEntity):
         self._state_attrs.update(
                 {key: self._extract_value_from_attribute(self._airzone_zone, value) for
                  key, value in self._available_attributes.items()})
-        self._attr_max_temp = self._airzone_zone.max_temp
-        self._attr_min_temp = self._airzone_zone.min_temp
-        # Temporary diagnostic: per the official Airzone Modbus map the
-        # set-point min/max limits live in SYSTEM registers 25 and 26, not in
-        # the per-zone registers the library reads. Log both so we can confirm
-        # where the real values (e.g. 25.0 / 28.0) actually are.
+        # The python-airzone library reads the min/max setpoint limits from the
+        # per-zone registers (relative 1 and 2), but on AZ6 firmwares those do
+        # not hold the setpoint limits. Per the official Airzone Modbus map the
+        # set-point min/max limits live in SYSTEM registers 25 and 26.
         try:
             system_regs = self._airzone_zone._machine.read_registers(25, 2)
-        except Exception as err:  # noqa: BLE001 - diagnostic only
-            system_regs = "read failed: %s" % err
-        _LOGGER.warning(
-            "Airzone innobus zone %s: zone_state=%s | system regs[25,26]=%s",
-            self._airzone_zone._zone_id,
-            self._airzone_zone.zone_state,
-            system_regs,
-        )
+            self._attr_min_temp = system_regs[0] / 10
+            self._attr_max_temp = system_regs[1] / 10
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Could not read setpoint min/max system registers (25/26), "
+                "falling back to zone registers: %s",
+                err,
+            )
+            self._attr_min_temp = self._airzone_zone.min_temp
+            self._attr_max_temp = self._airzone_zone.max_temp
         _LOGGER.debug(str(self._airzone_zone))
 
     @staticmethod
