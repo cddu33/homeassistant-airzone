@@ -53,8 +53,13 @@ class InnobusZone(CoordinatorEntity, ClimateEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return self._name
+        """Return the zone name read from the panel, or the default name."""
+        return self._zone_name() or self._name
+
+    def _zone_name(self):
+        """Zone name from registers 14-19 (provided by the coordinator)."""
+        zone = self.coordinator.data["zones"].get(self._airzone_zone.unique_id, {})
+        return zone.get("name")
 
     @property
     def supported_features(self):
@@ -195,7 +200,7 @@ class InnobusZone(CoordinatorEntity, ClimateEntity):
         """Group the zone as a device behind its parent machine."""
         return DeviceInfo(
             identifiers={(DOMAIN, self.unique_id)},
-            name=self._name,
+            name=self._zone_name() or self._name,
             manufacturer="Airzone",
             model="Innobus Zone",
             via_device=(DOMAIN, self._airzone_zone._machine.unique_id),

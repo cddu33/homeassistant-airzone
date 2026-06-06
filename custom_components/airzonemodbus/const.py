@@ -15,11 +15,14 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import Platform
 
-PLATFORMS = [Platform.CLIMATE, Platform.BINARY_SENSOR]
+PLATFORMS = [Platform.CLIMATE, Platform.BINARY_SENSOR, Platform.SELECT]
 
 # Zone register holding the "Lite Radio low battery" flag (bit 8).
 ZONE_REGISTER_ERRORS = 13
 ZONE_LOW_BATTERY_BIT = 8
+
+# Sleep levels (bits 6-7 of zone register 0): 0=Off, 1=30, 2=60, 3=90 minutes.
+SLEEP_OPTIONS = ["off", "30", "60", "90"]
 
 
 ### Innobus Extra Attributes

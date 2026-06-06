@@ -16,6 +16,22 @@ SYSTEM_REGISTER_MIN_SETPOINT = 25
 SYSTEM_REGISTER_MAX_SETPOINT = 26
 # Per-zone register holding the humidity value (0-100).
 ZONE_REGISTER_HUMIDITY = 31
+# Per-zone register 0 holds the operation mode; bits 6-7 are the sleep level.
+ZONE_REGISTER_MODE = 0
+ZONE_SLEEP_BIT_OFFSET = 6
+# Per-zone registers 14-19 hold the zone name (12 ASCII characters).
+ZONE_REGISTER_NAME = 14
+ZONE_REGISTER_NAME_COUNT = 6
+
+
+def _decode_name(registers):
+    """Decode the 12-character zone name packed in 6 modbus registers."""
+    chars = []
+    for reg in registers:
+        chars.append((reg >> 8) & 0xFF)
+        chars.append(reg & 0xFF)
+    name = bytes(c for c in chars if c).decode("ascii", errors="ignore").strip()
+    return name or None
 
 
 class AirzoneInnobusCoordinator(DataUpdateCoordinator):
@@ -54,7 +70,12 @@ class AirzoneInnobusCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Could not read min/max system registers (25/26): %s", err)
 
         for zone in self.machine.zones:
-            zone_data = {"humidity": None, "low_battery": None}
+            zone_data = {
+                "humidity": None,
+                "low_battery": None,
+                "sleep": None,
+                "name": None,
+            }
             try:
                 humidity = self.machine.read_registers(
                     zone.base_zone + ZONE_REGISTER_HUMIDITY, 1
@@ -69,6 +90,20 @@ class AirzoneInnobusCoordinator(DataUpdateCoordinator):
                 zone_data["low_battery"] = bool(register & (1 << ZONE_LOW_BATTERY_BIT))
             except Exception as err:  # noqa: BLE001
                 _LOGGER.debug("Could not read zone errors register (13): %s", err)
+            # Sleep level: bits 6-7 of the zone mode register (already fetched
+            # in the zone state by the machine refresh).
+            try:
+                mode_register = zone.zone_state[ZONE_REGISTER_MODE]
+                zone_data["sleep"] = (mode_register >> ZONE_SLEEP_BIT_OFFSET) & 0b11
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Could not read sleep bits (register 0): %s", err)
+            try:
+                name_regs = self.machine.read_registers(
+                    zone.base_zone + ZONE_REGISTER_NAME, ZONE_REGISTER_NAME_COUNT
+                )
+                zone_data["name"] = _decode_name(name_regs)
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Could not read zone name registers (14-19): %s", err)
             data["zones"][zone.unique_id] = zone_data
 
         return data
