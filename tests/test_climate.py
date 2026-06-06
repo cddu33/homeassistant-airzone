@@ -8,7 +8,7 @@ from pytest_homeassistant_custom_component.common import (  # noqa: E811,F401
     patch,
 )
 
-from custom_components.airzone.aidoo import Aidoo
+from custom_components.airzonemodbus.aidoo import Aidoo
 
 
 async def test_aido_async_update_success(hass):
