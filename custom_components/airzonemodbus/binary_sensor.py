@@ -34,17 +34,17 @@ class ZoneBinarySensor:
 
 # Read-only zone states, per the Airzone Modbus map (registers 9 and 4).
 BINARY_SENSORS = (
-    ZoneBinarySensor("battery", "Battery", ZONE_REGISTER_ERRORS, ZONE_LOW_BATTERY_BIT,
+    ZoneBinarySensor("battery", "Pile", ZONE_REGISTER_ERRORS, ZONE_LOW_BATTERY_BIT,
                      BinarySensorDeviceClass.BATTERY),
-    ZoneBinarySensor("air_demand", "Air Demand", ZONE_REGISTER_STATE, 7,
+    ZoneBinarySensor("air_demand", "Demande air", ZONE_REGISTER_STATE, 7,
                      BinarySensorDeviceClass.RUNNING),
-    ZoneBinarySensor("radiant_demand", "Radiant Demand", ZONE_REGISTER_STATE, 5,
+    ZoneBinarySensor("radiant_demand", "Demande sol", ZONE_REGISTER_STATE, 5,
                      BinarySensorDeviceClass.RUNNING),
-    ZoneBinarySensor("presence", "Presence", ZONE_REGISTER_STATE, 8,
+    ZoneBinarySensor("presence", "Présence", ZONE_REGISTER_STATE, 8,
                      BinarySensorDeviceClass.OCCUPANCY),
-    ZoneBinarySensor("window", "Window", ZONE_REGISTER_STATE, 9,
+    ZoneBinarySensor("window", "Fenêtre", ZONE_REGISTER_STATE, 9,
                      BinarySensorDeviceClass.WINDOW),
-    ZoneBinarySensor("remote_probe", "Remote Probe", ZONE_REGISTER_SETTINGS, 10,
+    ZoneBinarySensor("remote_probe", "Sonde déportée", ZONE_REGISTER_SETTINGS, 10,
                      BinarySensorDeviceClass.CONNECTIVITY),
     ZoneBinarySensor("thermostat", "Thermostat", ZONE_REGISTER_SETTINGS, 11,
                      BinarySensorDeviceClass.CONNECTIVITY),

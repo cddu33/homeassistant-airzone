@@ -24,11 +24,11 @@ class ZoneSwitch:
 
 # Writable zone settings bits (Airzone Modbus map, registers 4 and 22).
 SWITCHES = (
-    ZoneSwitch("heating_air", "Air Heating", ZONE_REGISTER_SETTINGS, 2, "mdi:fire"),
-    ZoneSwitch("floor_heating", "Floor Heating", ZONE_REGISTER_SETTINGS, 3, "mdi:heating-coil"),
-    ZoneSwitch("antifreeze", "Antifreeze", ZONE_REGISTER_SETTINGS, 4, "mdi:snowflake-alert"),
-    ZoneSwitch("air_cooling", "Air Cooling", ZONE_REGISTER_WATER, 0, "mdi:snowflake"),
-    ZoneSwitch("floor_cooling", "Floor Cooling", ZONE_REGISTER_WATER, 1, "mdi:snowflake-thermometer"),
+    ZoneSwitch("heating_air", "Chauffage air", ZONE_REGISTER_SETTINGS, 2, "mdi:fire"),
+    ZoneSwitch("floor_heating", "Chauffage sol", ZONE_REGISTER_SETTINGS, 3, "mdi:heating-coil"),
+    ZoneSwitch("antifreeze", "Antigel", ZONE_REGISTER_SETTINGS, 4, "mdi:snowflake-alert"),
+    ZoneSwitch("air_cooling", "Froid air", ZONE_REGISTER_WATER, 0, "mdi:snowflake"),
+    ZoneSwitch("floor_cooling", "Froid sol", ZONE_REGISTER_WATER, 1, "mdi:snowflake-thermometer"),
 )
 
 

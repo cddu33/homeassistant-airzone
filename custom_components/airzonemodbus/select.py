@@ -34,15 +34,15 @@ class ZoneSelect:
 
 # 2-bit fields of the zone registers (Airzone Modbus map).
 SELECTS = (
-    ZoneSelect("sleep", "Sleep", ZONE_REGISTER_MODE, SLEEP_BIT_OFFSET,
+    ZoneSelect("sleep", "Veille", ZONE_REGISTER_MODE, SLEEP_BIT_OFFSET,
                SLEEP_OPTIONS, "mdi:power-sleep"),
-    ZoneSelect("grille_heating", "Grille Angle Heating", ZONE_REGISTER_SETTINGS, 5,
+    ZoneSelect("grille_heating", "Angle grille chaud", ZONE_REGISTER_SETTINGS, 5,
                GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
-    ZoneSelect("grille_cooling", "Grille Angle Cooling", ZONE_REGISTER_SETTINGS, 7,
+    ZoneSelect("grille_cooling", "Angle grille froid", ZONE_REGISTER_SETTINGS, 7,
                GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
-    ZoneSelect("occupancy", "Occupancy Detection", ZONE_REGISTER_SETTINGS, 12,
+    ZoneSelect("occupancy", "Détection présence", ZONE_REGISTER_SETTINGS, 12,
                DETECTION_OPTIONS, "mdi:account-check"),
-    ZoneSelect("window_config", "Window Detection", ZONE_REGISTER_SETTINGS, 14,
+    ZoneSelect("window_config", "Détection fenêtre", ZONE_REGISTER_SETTINGS, 14,
                DETECTION_OPTIONS, "mdi:window-closed-variant"),
 )
 

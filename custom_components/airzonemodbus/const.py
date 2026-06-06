@@ -33,13 +33,13 @@ ZONE_REGISTER_HUMIDITY = 31  # humidity 0-100
 ZONE_LOW_BATTERY_BIT = 8
 
 # Sleep levels (bits 6-7 of zone register 0): 0=Off, 1=30, 2=60, 3=90 minutes.
-SLEEP_OPTIONS = ["off", "30", "60", "90"]
+SLEEP_OPTIONS = ["arret", "30", "60", "90"]
 SLEEP_BIT_OFFSET = 6
 
 # Grille opening angle options (register 4, 2-bit fields).
 GRILLE_ANGLE_OPTIONS = ["90", "50", "45", "40"]
 # Occupancy / window detection options (register 4, 2-bit fields).
-DETECTION_OPTIONS = ["off", "normally_open", "normally_closed"]
+DETECTION_OPTIONS = ["desactive", "normalement_ouvert", "normalement_ferme"]
 
 
 ### Innobus Extra Attributes
@@ -80,7 +80,7 @@ PRESET_SLEEP = 'SLEEP'
 ZONE_PRESET_MODES = [PRESET_NONE, PRESET_SLEEP]
 ZONE_FAN_MODES = {FAN_AUTO: 'AUTOMATIC', FAN_LOW: 'SPEED_1', FAN_MEDIUM: 'SPEED_2', FAN_HIGH: 'SPEED_3'}
 ZONE_FAN_MODES_R = dict(zip(ZONE_FAN_MODES.values(),ZONE_FAN_MODES.keys()))
-ZONE_SUPPORT_FLAGS = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.PRESET_MODE
+ZONE_SUPPORT_FLAGS = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
 
 MACHINE_HVAC_MODES = [HVACMode.FAN_ONLY, HVACMode.HEAT,  HVACMode.COOL,  HVACMode.OFF]
 PRESET_COMBINED_MODE = 'AIR&FLOOR'
