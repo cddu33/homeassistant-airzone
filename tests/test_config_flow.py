@@ -4,8 +4,8 @@ from unittest import mock
 from homeassistant.const import CONF_DEVICE_CLASS, CONF_DEVICE_ID, CONF_HOST, CONF_PORT
 from pytest_homeassistant_custom_component.common import MockConfigEntry, patch
 
-from custom_components.airzone import config_flow
-from custom_components.airzone.const import CONF_SPEED_PERCENTAGE, DOMAIN
+from custom_components.airzonemodbus import config_flow
+from custom_components.airzonemodbus.const import CONF_SPEED_PERCENTAGE, DOMAIN
 
 
 async def test_flow_user_init(hass):
@@ -18,14 +18,14 @@ async def test_flow_user_init(hass):
         "description_placeholders": None,
         "errors": {},
         "flow_id": mock.ANY,
-        "handler": "airzone",
+        "handler": "airzonemodbus",
         "step_id": "user",
         "type": "form",
     }
     assert expected == result
 
 
-@patch("custom_components.airzone.climate.airzone_factory")
+@patch("custom_components.airzonemodbus.climate.airzone_factory")
 async def test_add_airzone(m_airzone_factory, hass):
     """Test config flow options."""
     m_instance = mock.MagicMock()
