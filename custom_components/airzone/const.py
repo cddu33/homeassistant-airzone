@@ -1,4 +1,4 @@
-DOMAIN = "airzone"
+DOMAIN = "airzoneModbus"
 DEFAULT_DEVICE_ID = 1
 DEFAULT_DEVICE_CLASS = 'innobus'
 DEFAULT_SPEED_AS_PER = False
