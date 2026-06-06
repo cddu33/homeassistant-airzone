@@ -7,6 +7,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.const import CONF_DEVICE_CLASS
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, ZONE_LOW_BATTERY_BIT, ZONE_REGISTER_ERRORS
 
@@ -42,6 +43,14 @@ class AirzoneZoneBatterySensor(BinarySensorEntity):
         self._attr_name = "Airzone Zone " + str(airzone_zone._zone_id) + " Battery"
         self._attr_unique_id = f"{airzone_zone.unique_id}_battery"
         self._attr_is_on = None
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the same device as the zone climate entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._airzone_zone.unique_id)},
+            via_device=(DOMAIN, self._airzone_zone._machine.unique_id),
+        )
 
     def update(self):
         """Read the zone errors register and extract the low battery bit."""

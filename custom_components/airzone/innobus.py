@@ -10,9 +10,11 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import (
     AVAILABLE_ATTRIBUTES_ZONE,
+    DOMAIN,
     MACHINE_HVAC_MODES,
     MACHINE_PRESET_MODES,
     MACHINE_SUPPORT_FLAGS,
@@ -46,7 +48,7 @@ class InnobusZone(ClimateEntity):
         self._attr_current_humidity = None
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return self._state_attrs
 
@@ -189,6 +191,16 @@ class InnobusZone(ClimateEntity):
     def unique_id(self):
         return self._airzone_zone.unique_id
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Group the zone as a device behind its parent machine."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.unique_id)},
+            name=self._name,
+            manufacturer="Airzone",
+            model="Innobus Zone",
+            via_device=(DOMAIN, self._airzone_zone._machine.unique_id),
+        )
 
     def update(self):
         self._airzone_zone.retrieve_zone_state()
@@ -338,6 +350,15 @@ class InnobusMachine(ClimateEntity):
     def unique_id(self):
         return self._airzone_machine.unique_id
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Master device that the zones are grouped behind."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.unique_id)},
+            name=self._name,
+            manufacturer="Airzone",
+            model="Innobus System",
+        )
 
     async def async_update(self):
         self._airzone_machine._retrieve_machine_state()
