@@ -3,21 +3,19 @@ import logging
 
 from airzone import airzone_factory
 from homeassistant import config_entries, core
-from homeassistant.const import CONF_DEVICE_CLASS, CONF_DEVICE_ID, CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_DEVICE_ID, CONF_HOST, CONF_PORT
 
-from .const import CONF_SPEED_PERCENTAGE, DEFAULT_SPEED_AS_PER, DOMAIN, PLATFORMS
+from .const import DOMAIN, PLATFORMS, SYSTEM_CLASS
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def _build_machine(config):
-    """Create the Airzone machine (single shared connection)."""
+    """Create the Airzone Modbus machine (single shared connection)."""
     host = config[CONF_HOST]
     port = config[CONF_PORT]
     machine_id = config[CONF_DEVICE_ID]
-    system_class = config[CONF_DEVICE_CLASS]
-    aidoo_args = {"speed_as_per": config.get(CONF_SPEED_PERCENTAGE, DEFAULT_SPEED_AS_PER)}
-    return airzone_factory(host, port, machine_id, system_class, **aidoo_args)
+    return airzone_factory(host, port, machine_id, SYSTEM_CLASS)
 
 
 async def async_setup_entry(
@@ -28,17 +26,15 @@ async def async_setup_entry(
     hass.data.setdefault(DOMAIN, {})
 
     # Build the connection once and share it across platforms (climate,
-    # binary_sensor). A modbus RTU bus cannot be opened twice concurrently.
+    # binary_sensor, select). A modbus bus cannot be opened twice concurrently.
     machine = await hass.async_add_executor_job(_build_machine, entry.data)
 
-    # Innobus uses a single coordinator that refreshes the whole machine in one
-    # modbus pass and feeds every entity (climate + binary_sensor).
-    coordinator = None
-    if entry.data[CONF_DEVICE_CLASS] == "innobus":
-        from .coordinator import AirzoneInnobusCoordinator
+    # A single coordinator refreshes the whole machine in one modbus pass and
+    # feeds every entity.
+    from .coordinator import AirzoneInnobusCoordinator
 
-        coordinator = AirzoneInnobusCoordinator(hass, machine)
-        await coordinator.async_config_entry_first_refresh()
+    coordinator = AirzoneInnobusCoordinator(hass, machine)
+    await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = {
         "config": entry.data,
