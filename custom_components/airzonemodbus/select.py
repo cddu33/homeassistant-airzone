@@ -1,20 +1,50 @@
-"""Select entities for the Airzone integration (zone sleep timer)."""
+"""Select entities for the Airzone Modbus integration (2-bit zone fields)."""
+from dataclasses import dataclass
 import logging
+from typing import List
 
 from homeassistant import config_entries, core
 from homeassistant.components.select import SelectEntity
-from homeassistant.const import CONF_DEVICE_CLASS
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, SLEEP_OPTIONS
+from .const import (
+    DETECTION_OPTIONS,
+    DOMAIN,
+    GRILLE_ANGLE_OPTIONS,
+    SLEEP_BIT_OFFSET,
+    SLEEP_OPTIONS,
+    ZONE_REGISTER_MODE,
+    ZONE_REGISTER_SETTINGS,
+)
+from .entity import AirzoneZoneEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-# Zone register 0 holds the operation mode; bits 6-7 are the sleep level.
-ZONE_REGISTER_MODE = 0
-ZONE_SLEEP_BIT_OFFSET = 6
-ZONE_SLEEP_MASK = 0b11 << ZONE_SLEEP_BIT_OFFSET
+
+@dataclass(frozen=True)
+class ZoneSelect:
+    """Description of a 2-bit zone select field."""
+
+    key: str
+    name: str
+    register: int
+    bit_offset: int
+    options: List[str]
+    icon: str = None
+
+
+# 2-bit fields of the zone registers (Airzone Modbus map).
+SELECTS = (
+    ZoneSelect("sleep", "Sleep", ZONE_REGISTER_MODE, SLEEP_BIT_OFFSET,
+               SLEEP_OPTIONS, "mdi:power-sleep"),
+    ZoneSelect("grille_heating", "Grille Angle Heating", ZONE_REGISTER_SETTINGS, 5,
+               GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
+    ZoneSelect("grille_cooling", "Grille Angle Cooling", ZONE_REGISTER_SETTINGS, 7,
+               GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
+    ZoneSelect("occupancy", "Occupancy Detection", ZONE_REGISTER_SETTINGS, 12,
+               DETECTION_OPTIONS, "mdi:account-check"),
+    ZoneSelect("window_config", "Window Detection", ZONE_REGISTER_SETTINGS, 14,
+               DETECTION_OPTIONS, "mdi:window-closed-variant"),
+)
 
 
 async def async_setup_entry(
@@ -24,52 +54,40 @@ async def async_setup_entry(
 ):
     """Set up the Airzone select entities from a config entry."""
     data = hass.data[DOMAIN][config_entry.entry_id]
-
-    # The sleep timer is only exposed by Innobus (modbus) zones.
-    if data["config"][CONF_DEVICE_CLASS] != "innobus":
-        return
-
-    coordinator = data["coordinator"]
     entities = [
-        AirzoneZoneSleepSelect(coordinator, zone)
+        AirzoneZoneSelect(data["coordinator"], zone, description)
         for zone in data["machine"].zones
+        for description in SELECTS
     ]
     async_add_entities(entities)
 
 
-class AirzoneZoneSleepSelect(CoordinatorEntity, SelectEntity):
-    """Sleep timer (Off / 30 / 60 / 90 minutes) of an Innobus zone."""
+class AirzoneZoneSelect(AirzoneZoneEntity, SelectEntity):
+    """A 2-bit field of a zone register exposed as a select."""
 
-    _attr_options = SLEEP_OPTIONS
-    _attr_icon = "mdi:power-sleep"
-
-    def __init__(self, coordinator, airzone_zone):
+    def __init__(self, coordinator, airzone_zone, description: ZoneSelect):
         """Initialize the device."""
-        super().__init__(coordinator)
-        self._airzone_zone = airzone_zone
-        self._attr_name = "Airzone Zone " + str(airzone_zone._zone_id) + " Sleep"
-        self._attr_unique_id = f"{airzone_zone.unique_id}_sleep"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Attach to the same device as the zone climate entity."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._airzone_zone.unique_id)},
-            via_device=(DOMAIN, self._airzone_zone._machine.unique_id),
+        super().__init__(coordinator, airzone_zone)
+        self._description = description
+        self._attr_options = description.options
+        self._attr_icon = description.icon
+        self._attr_name = (
+            "Airzone Zone " + str(airzone_zone._zone_id) + " " + description.name
         )
+        self._attr_unique_id = f"{airzone_zone.unique_id}_{description.key}"
 
     @property
     def current_option(self):
-        """Return the current sleep level provided by the coordinator."""
-        zone = self.coordinator.data["zones"].get(self._airzone_zone.unique_id, {})
-        level = zone.get("sleep")
-        if level is None or level >= len(SLEEP_OPTIONS):
+        """Return the current option from the configured register field."""
+        register = self._register(self._description.register)
+        if register is None:
             return None
-        return SLEEP_OPTIONS[level]
+        index = (register >> self._description.bit_offset) & 0b11
+        if index >= len(self._description.options):
+            return None
+        return self._description.options[index]
 
     def select_option(self, option: str) -> None:
-        """Write the sleep level into bits 6-7 of zone register 0."""
-        level = SLEEP_OPTIONS.index(option)
-        current = self._airzone_zone.zone_state[ZONE_REGISTER_MODE]
-        new_value = (current & ~ZONE_SLEEP_MASK) | (level << ZONE_SLEEP_BIT_OFFSET)
-        self._airzone_zone.write_register(ZONE_REGISTER_MODE, new_value)
+        """Write the selected option into the 2-bit register field."""
+        index = self._description.options.index(option)
+        self._write_range(self._description.register, self._description.bit_offset, 2, index)

@@ -16,14 +16,30 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import Platform
 
-PLATFORMS = [Platform.CLIMATE, Platform.BINARY_SENSOR, Platform.SELECT]
+PLATFORMS = [
+    Platform.CLIMATE,
+    Platform.BINARY_SENSOR,
+    Platform.SELECT,
+    Platform.SWITCH,
+]
 
-# Zone register holding the "Lite Radio low battery" flag (bit 8).
-ZONE_REGISTER_ERRORS = 13
+# --- Per-zone modbus register addresses (relative to base_zone) ---
+ZONE_REGISTER_MODE = 0       # operation mode (sleep bits 6-7)
+ZONE_REGISTER_SETTINGS = 4   # zone settings (heating/floor/antifreeze, angles...)
+ZONE_REGISTER_STATE = 9      # live state (demands, presence, window)
+ZONE_REGISTER_ERRORS = 13    # zone errors (low battery bit 8)
+ZONE_REGISTER_WATER = 22     # water/cooling settings
+ZONE_REGISTER_HUMIDITY = 31  # humidity 0-100
 ZONE_LOW_BATTERY_BIT = 8
 
 # Sleep levels (bits 6-7 of zone register 0): 0=Off, 1=30, 2=60, 3=90 minutes.
 SLEEP_OPTIONS = ["off", "30", "60", "90"]
+SLEEP_BIT_OFFSET = 6
+
+# Grille opening angle options (register 4, 2-bit fields).
+GRILLE_ANGLE_OPTIONS = ["90", "50", "45", "40"]
+# Occupancy / window detection options (register 4, 2-bit fields).
+DETECTION_OPTIONS = ["off", "normally_open", "normally_closed"]
 
 
 ### Innobus Extra Attributes

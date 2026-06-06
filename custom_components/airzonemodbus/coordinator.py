@@ -5,7 +5,15 @@ import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, ZONE_LOW_BATTERY_BIT, ZONE_REGISTER_ERRORS
+from .const import (
+    DOMAIN,
+    ZONE_REGISTER_ERRORS,
+    ZONE_REGISTER_HUMIDITY,
+    ZONE_REGISTER_MODE,
+    ZONE_REGISTER_SETTINGS,
+    ZONE_REGISTER_STATE,
+    ZONE_REGISTER_WATER,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,11 +22,6 @@ SCAN_INTERVAL = timedelta(seconds=10)
 # System registers holding the global set-point min/max limits.
 SYSTEM_REGISTER_MIN_SETPOINT = 25
 SYSTEM_REGISTER_MAX_SETPOINT = 26
-# Per-zone register holding the humidity value (0-100).
-ZONE_REGISTER_HUMIDITY = 31
-# Per-zone register 0 holds the operation mode; bits 6-7 are the sleep level.
-ZONE_REGISTER_MODE = 0
-ZONE_SLEEP_BIT_OFFSET = 6
 # Per-zone registers 14-19 hold the zone name (12 ASCII characters).
 ZONE_REGISTER_NAME = 14
 ZONE_REGISTER_NAME_COUNT = 6
@@ -70,33 +73,31 @@ class AirzoneInnobusCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Could not read min/max system registers (25/26): %s", err)
 
         for zone in self.machine.zones:
+            # Raw registers used by the bit-based sensors/switches/selects.
+            # Registers 0 (mode), 4 (settings) and 9 (state) are already in the
+            # zone state fetched above; 13 (errors), 22 (water) and 31
+            # (humidity) must be read separately.
+            registers = {}
+            try:
+                registers[ZONE_REGISTER_MODE] = zone.zone_state[ZONE_REGISTER_MODE]
+                registers[ZONE_REGISTER_SETTINGS] = zone.zone_state[ZONE_REGISTER_SETTINGS]
+                registers[ZONE_REGISTER_STATE] = zone.zone_state[ZONE_REGISTER_STATE]
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Could not read zone state registers: %s", err)
+            for addr in (ZONE_REGISTER_ERRORS, ZONE_REGISTER_WATER, ZONE_REGISTER_HUMIDITY):
+                try:
+                    registers[addr] = self.machine.read_registers(
+                        zone.base_zone + addr, 1
+                    )[0]
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug("Could not read zone register %s: %s", addr, err)
+
+            humidity = registers.get(ZONE_REGISTER_HUMIDITY)
             zone_data = {
-                "humidity": None,
-                "low_battery": None,
-                "sleep": None,
+                "registers": registers,
+                "humidity": humidity if humidity is not None and 0 <= humidity <= 100 else None,
                 "name": None,
             }
-            try:
-                humidity = self.machine.read_registers(
-                    zone.base_zone + ZONE_REGISTER_HUMIDITY, 1
-                )[0]
-                zone_data["humidity"] = humidity if 0 <= humidity <= 100 else None
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.debug("Could not read humidity register (31): %s", err)
-            try:
-                register = self.machine.read_registers(
-                    zone.base_zone + ZONE_REGISTER_ERRORS, 1
-                )[0]
-                zone_data["low_battery"] = bool(register & (1 << ZONE_LOW_BATTERY_BIT))
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.debug("Could not read zone errors register (13): %s", err)
-            # Sleep level: bits 6-7 of the zone mode register (already fetched
-            # in the zone state by the machine refresh).
-            try:
-                mode_register = zone.zone_state[ZONE_REGISTER_MODE]
-                zone_data["sleep"] = (mode_register >> ZONE_SLEEP_BIT_OFFSET) & 0b11
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.debug("Could not read sleep bits (register 0): %s", err)
             try:
                 name_regs = self.machine.read_registers(
                     zone.base_zone + ZONE_REGISTER_NAME, ZONE_REGISTER_NAME_COUNT
