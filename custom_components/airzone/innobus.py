@@ -11,6 +11,7 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     AVAILABLE_ATTRIBUTES_ZONE,
@@ -33,24 +34,22 @@ _LOGGER = logging.getLogger(__name__)
 
 
 
-class InnobusZone(ClimateEntity):
+class InnobusZone(CoordinatorEntity, ClimateEntity):
     """Representation of a Innobus Zone."""
 
-    def __init__(self, airzone_zone):
+    def __init__(self, coordinator, airzone_zone):
         """Initialize the device."""
+        super().__init__(coordinator)
         self._name = "Airzone Zone "  + str(airzone_zone._zone_id)
         _LOGGER.info("Airzone configure zone " + self._name)
         self._airzone_zone = airzone_zone
         self._available_attributes = AVAILABLE_ATTRIBUTES_ZONE
-        self._state_attrs = {}
-        self._state_attrs.update(
-            {attribute: None for attribute in self._available_attributes})
-        self._attr_current_humidity = None
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._state_attrs
+        return {key: self._extract_value_from_attribute(self._airzone_zone, value)
+                for key, value in self._available_attributes.items()}
 
     @property
     def name(self):
@@ -202,38 +201,23 @@ class InnobusZone(ClimateEntity):
             via_device=(DOMAIN, self._airzone_zone._machine.unique_id),
         )
 
-    def update(self):
-        self._airzone_zone.retrieve_zone_state()
-        self._state_attrs.update(
-                {key: self._extract_value_from_attribute(self._airzone_zone, value) for
-                 key, value in self._available_attributes.items()})
-        # The python-airzone library reads the min/max setpoint limits from the
-        # per-zone registers (relative 1 and 2), but on AZ6 firmwares those do
-        # not hold the setpoint limits. Per the official Airzone Modbus map the
-        # set-point min/max limits live in SYSTEM registers 25 and 26.
-        try:
-            system_regs = self._airzone_zone._machine.read_registers(25, 2)
-            self._attr_min_temp = system_regs[0] / 10
-            self._attr_max_temp = system_regs[1] / 10
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning(
-                "Could not read setpoint min/max system registers (25/26), "
-                "falling back to zone registers: %s",
-                err,
-            )
-            self._attr_min_temp = self._airzone_zone.min_temp
-            self._attr_max_temp = self._airzone_zone.max_temp
-        # Humidity lives in zone register 31 (value 0-100). The library only
-        # fetches registers 0-12 of the zone block, so read it directly.
-        try:
-            humidity = self._airzone_zone._machine.read_registers(
-                self._airzone_zone.base_zone + 31, 1
-            )[0]
-            self._attr_current_humidity = humidity if 0 <= humidity <= 100 else None
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.debug("Could not read humidity register (31): %s", err)
-            self._attr_current_humidity = None
-        _LOGGER.debug(str(self._airzone_zone))
+    @property
+    def min_temp(self):
+        """Min setpoint from system register 25 (provided by the coordinator)."""
+        value = self.coordinator.data.get("min_temp")
+        return value if value is not None else self._airzone_zone.min_temp
+
+    @property
+    def max_temp(self):
+        """Max setpoint from system register 26 (provided by the coordinator)."""
+        value = self.coordinator.data.get("max_temp")
+        return value if value is not None else self._airzone_zone.max_temp
+
+    @property
+    def current_humidity(self):
+        """Humidity from zone register 31 (provided by the coordinator)."""
+        zone = self.coordinator.data["zones"].get(self._airzone_zone.unique_id, {})
+        return zone.get("humidity")
 
     @staticmethod
     def _extract_value_from_attribute(state, attribute):
@@ -244,11 +228,12 @@ class InnobusZone(ClimateEntity):
         return value
 
 
-class InnobusMachine(ClimateEntity):
+class InnobusMachine(CoordinatorEntity, ClimateEntity):
     """Representation of a Innobus Machine."""
 
-    def __init__(self, airzone_machine):
+    def __init__(self, coordinator, airzone_machine):
         """Initialize the device."""
+        super().__init__(coordinator)
         self._name = "Airzone Machine "  + str(airzone_machine._machineId)
         _LOGGER.info("Airzone configure machine " + self._name)
         self._airzone_machine = airzone_machine
@@ -359,7 +344,3 @@ class InnobusMachine(ClimateEntity):
             manufacturer="Airzone",
             model="Innobus System",
         )
-
-    async def async_update(self):
-        self._airzone_machine._retrieve_machine_state()
-        _LOGGER.debug(str(self._airzone_machine))
