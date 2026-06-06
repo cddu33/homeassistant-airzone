@@ -43,6 +43,7 @@ class InnobusZone(ClimateEntity):
         self._state_attrs = {}
         self._state_attrs.update(
             {attribute: None for attribute in self._available_attributes})
+        self._attr_current_humidity = None
 
     @property
     def device_state_attributes(self):
@@ -210,6 +211,16 @@ class InnobusZone(ClimateEntity):
             )
             self._attr_min_temp = self._airzone_zone.min_temp
             self._attr_max_temp = self._airzone_zone.max_temp
+        # Humidity lives in zone register 31 (value 0-100). The library only
+        # fetches registers 0-12 of the zone block, so read it directly.
+        try:
+            humidity = self._airzone_zone._machine.read_registers(
+                self._airzone_zone.base_zone + 31, 1
+            )[0]
+            self._attr_current_humidity = humidity if 0 <= humidity <= 100 else None
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Could not read humidity register (31): %s", err)
+            self._attr_current_humidity = None
         _LOGGER.debug(str(self._airzone_zone))
 
     @staticmethod
