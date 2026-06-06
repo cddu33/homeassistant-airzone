@@ -34,15 +34,15 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
-async def async_get_devices(config, hass):
-    port = config[CONF_PORT]
-    host = config[CONF_HOST]
-    machine_id = config[CONF_DEVICE_ID]
+async def async_get_devices(config, hass, machine=None):
     system_class = config[CONF_DEVICE_CLASS]
 
-    aidoo_args = {"speed_as_per": config[CONF_SPEED_PERCENTAGE]}
-
-    machine = await hass.async_add_executor_job(lambda: airzone_factory(host, port, machine_id, system_class, **aidoo_args))
+    if machine is None:
+        port = config[CONF_PORT]
+        host = config[CONF_HOST]
+        machine_id = config[CONF_DEVICE_ID]
+        aidoo_args = {"speed_as_per": config[CONF_SPEED_PERCENTAGE]}
+        machine = await hass.async_add_executor_job(lambda: airzone_factory(host, port, machine_id, system_class, **aidoo_args))
 
     if system_class == 'aidoo':
         from .aidoo import Aidoo as Machine
@@ -58,9 +58,12 @@ async def async_get_devices(config, hass):
                 from .localapi import  LocalAPIZone as Zone
                 devices = [Machine(machine)] + [Zone(z) for z in machine.zones]                                
         elif system_class == 'innobus':
-            from .innobus import InnobusMachine as Machine
-            from .innobus import  InnobusZone as Zone
-            devices = [Machine(machine)] + [Zone(z) for z in machine.zones]
+            from .coordinator import AirzoneInnobusCoordinator
+            from .innobus import InnobusMachine, InnobusZone
+            coordinator = AirzoneInnobusCoordinator(hass, machine)
+            await coordinator.async_refresh()
+            devices = [InnobusMachine(coordinator, machine)]
+            devices += [InnobusZone(coordinator, z) for z in machine.zones]
 
     _LOGGER.info("Airzone devices " + str(devices) + " " + str(len(devices)))
     return devices
@@ -71,8 +74,20 @@ async def async_setup_entry(
     async_add_entities,
 ):
     """Setup sensors from a config entry created in the integrations UI."""
-    config = hass.data[DOMAIN][config_entry.entry_id]
-    devices = await async_get_devices(config, hass)
+    data = hass.data[DOMAIN][config_entry.entry_id]
+    config = data["config"]
+
+    if config[CONF_DEVICE_CLASS] == "innobus":
+        from .innobus import InnobusMachine, InnobusZone
+
+        coordinator = data["coordinator"]
+        machine = data["machine"]
+        entities = [InnobusMachine(coordinator, machine)]
+        entities += [InnobusZone(coordinator, zone) for zone in machine.zones]
+        async_add_entities(entities)
+        return
+
+    devices = await async_get_devices(config, hass, data["machine"])
     async_add_entities(devices, update_before_add=True)
 
 async def async_setup_platform(

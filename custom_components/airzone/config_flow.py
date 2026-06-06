@@ -28,7 +28,7 @@ AIRZONE_SCHEMA = vol.Schema(
     }
 )
 
-class AirzoneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class airzoneModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Github Custom config flow."""
 
     data: Optional[Dict[str, Any]]

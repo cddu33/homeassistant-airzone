@@ -1,4 +1,4 @@
-DOMAIN = "airzone"
+DOMAIN = "airzoneModbus"
 DEFAULT_DEVICE_ID = 1
 DEFAULT_DEVICE_CLASS = 'innobus'
 DEFAULT_SPEED_AS_PER = False
@@ -15,7 +15,11 @@ from homeassistant.components.climate import (
 )
 from homeassistant.const import Platform
 
-PLATFORMS = [Platform.CLIMATE]
+PLATFORMS = [Platform.CLIMATE, Platform.BINARY_SENSOR]
+
+# Zone register holding the "Lite Radio low battery" flag (bit 8).
+ZONE_REGISTER_ERRORS = 13
+ZONE_LOW_BATTERY_BIT = 8
 
 
 ### Innobus Extra Attributes

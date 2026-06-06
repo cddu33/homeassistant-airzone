@@ -10,9 +10,12 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     AVAILABLE_ATTRIBUTES_ZONE,
+    DOMAIN,
     MACHINE_HVAC_MODES,
     MACHINE_PRESET_MODES,
     MACHINE_SUPPORT_FLAGS,
@@ -31,23 +34,22 @@ _LOGGER = logging.getLogger(__name__)
 
 
 
-class InnobusZone(ClimateEntity):
+class InnobusZone(CoordinatorEntity, ClimateEntity):
     """Representation of a Innobus Zone."""
 
-    def __init__(self, airzone_zone):
+    def __init__(self, coordinator, airzone_zone):
         """Initialize the device."""
+        super().__init__(coordinator)
         self._name = "Airzone Zone "  + str(airzone_zone._zone_id)
         _LOGGER.info("Airzone configure zone " + self._name)
         self._airzone_zone = airzone_zone
         self._available_attributes = AVAILABLE_ATTRIBUTES_ZONE
-        self._state_attrs = {}
-        self._state_attrs.update(
-            {attribute: None for attribute in self._available_attributes})
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._state_attrs
+        return {key: self._extract_value_from_attribute(self._airzone_zone, value)
+                for key, value in self._available_attributes.items()}
 
     @property
     def name(self):
@@ -188,20 +190,34 @@ class InnobusZone(ClimateEntity):
     def unique_id(self):
         return self._airzone_zone.unique_id
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Group the zone as a device behind its parent machine."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.unique_id)},
+            name=self._name,
+            manufacturer="Airzone",
+            model="Innobus Zone",
+            via_device=(DOMAIN, self._airzone_zone._machine.unique_id),
+        )
 
-    def update(self):
-        self._airzone_zone.retrieve_zone_state()
-        self._state_attrs.update(
-                {key: self._extract_value_from_attribute(self._airzone_zone, value) for
-                 key, value in self._available_attributes.items()})
-        # Some Innobus firmwares map the min/max setpoint modbus registers
-        # the other way around, which results in an inverted temperature
-        # range in Home Assistant. Normalize so min is always <= max.
-        zone_min = self._airzone_zone.min_temp
-        zone_max = self._airzone_zone.max_temp
-        self._attr_min_temp = min(zone_min, zone_max)
-        self._attr_max_temp = max(zone_min, zone_max)
-        _LOGGER.debug(str(self._airzone_zone))
+    @property
+    def min_temp(self):
+        """Min setpoint from system register 25 (provided by the coordinator)."""
+        value = self.coordinator.data.get("min_temp")
+        return value if value is not None else self._airzone_zone.min_temp
+
+    @property
+    def max_temp(self):
+        """Max setpoint from system register 26 (provided by the coordinator)."""
+        value = self.coordinator.data.get("max_temp")
+        return value if value is not None else self._airzone_zone.max_temp
+
+    @property
+    def current_humidity(self):
+        """Humidity from zone register 31 (provided by the coordinator)."""
+        zone = self.coordinator.data["zones"].get(self._airzone_zone.unique_id, {})
+        return zone.get("humidity")
 
     @staticmethod
     def _extract_value_from_attribute(state, attribute):
@@ -212,11 +228,12 @@ class InnobusZone(ClimateEntity):
         return value
 
 
-class InnobusMachine(ClimateEntity):
+class InnobusMachine(CoordinatorEntity, ClimateEntity):
     """Representation of a Innobus Machine."""
 
-    def __init__(self, airzone_machine):
+    def __init__(self, coordinator, airzone_machine):
         """Initialize the device."""
+        super().__init__(coordinator)
         self._name = "Airzone Machine "  + str(airzone_machine._machineId)
         _LOGGER.info("Airzone configure machine " + self._name)
         self._airzone_machine = airzone_machine
@@ -318,7 +335,12 @@ class InnobusMachine(ClimateEntity):
     def unique_id(self):
         return self._airzone_machine.unique_id
 
-
-    async def async_update(self):
-        self._airzone_machine._retrieve_machine_state()
-        _LOGGER.debug(str(self._airzone_machine))
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Master device that the zones are grouped behind."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.unique_id)},
+            name=self._name,
+            manufacturer="Airzone",
+            model="Innobus System",
+        )
