@@ -13,7 +13,6 @@ from .const import (
     DOMAIN,
     ZONE_LOW_BATTERY_BIT,
     ZONE_REGISTER_ERRORS,
-    ZONE_REGISTER_SETTINGS,
     ZONE_REGISTER_STATE,
 )
 from .entity import AirzoneZoneEntity
@@ -44,10 +43,6 @@ BINARY_SENSORS = (
                      BinarySensorDeviceClass.OCCUPANCY),
     ZoneBinarySensor("window", "Fenêtre", ZONE_REGISTER_STATE, 9,
                      BinarySensorDeviceClass.WINDOW),
-    ZoneBinarySensor("remote_probe", "Sonde déportée", ZONE_REGISTER_SETTINGS, 10,
-                     BinarySensorDeviceClass.CONNECTIVITY),
-    ZoneBinarySensor("thermostat", "Thermostat", ZONE_REGISTER_SETTINGS, 11,
-                     BinarySensorDeviceClass.CONNECTIVITY),
 )
 
 

@@ -12,7 +12,6 @@ from .const import (
     ZONE_REGISTER_MODE,
     ZONE_REGISTER_SETTINGS,
     ZONE_REGISTER_STATE,
-    ZONE_REGISTER_WATER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -73,10 +72,10 @@ class AirzoneInnobusCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Could not read min/max system registers (25/26): %s", err)
 
         for zone in self.machine.zones:
-            # Raw registers used by the bit-based sensors/switches/selects.
+            # Raw registers used by the bit-based binary sensors and selects.
             # Registers 0 (mode), 4 (settings) and 9 (state) are already in the
-            # zone state fetched above; 13 (errors), 22 (water) and 31
-            # (humidity) must be read separately.
+            # zone state fetched above; 13 (errors) and 31 (humidity) must be
+            # read separately.
             registers = {}
             try:
                 registers[ZONE_REGISTER_MODE] = zone.zone_state[ZONE_REGISTER_MODE]
@@ -84,7 +83,7 @@ class AirzoneInnobusCoordinator(DataUpdateCoordinator):
                 registers[ZONE_REGISTER_STATE] = zone.zone_state[ZONE_REGISTER_STATE]
             except Exception as err:  # noqa: BLE001
                 _LOGGER.debug("Could not read zone state registers: %s", err)
-            for addr in (ZONE_REGISTER_ERRORS, ZONE_REGISTER_WATER, ZONE_REGISTER_HUMIDITY):
+            for addr in (ZONE_REGISTER_ERRORS, ZONE_REGISTER_HUMIDITY):
                 try:
                     registers[addr] = self.machine.read_registers(
                         zone.base_zone + addr, 1

@@ -7,7 +7,6 @@ from homeassistant import config_entries, core
 from homeassistant.components.select import SelectEntity
 
 from .const import (
-    DETECTION_OPTIONS,
     DOMAIN,
     GRILLE_ANGLE_OPTIONS,
     SLEEP_BIT_OFFSET,
@@ -40,10 +39,6 @@ SELECTS = (
                GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
     ZoneSelect("grille_cooling", "Angle grille froid", ZONE_REGISTER_SETTINGS, 7,
                GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
-    ZoneSelect("occupancy", "Détection présence", ZONE_REGISTER_SETTINGS, 12,
-               DETECTION_OPTIONS, "mdi:account-check"),
-    ZoneSelect("window_config", "Détection fenêtre", ZONE_REGISTER_SETTINGS, 14,
-               DETECTION_OPTIONS, "mdi:window-closed-variant"),
 )
 
 

@@ -20,7 +20,6 @@ PLATFORMS = [
     Platform.CLIMATE,
     Platform.BINARY_SENSOR,
     Platform.SELECT,
-    Platform.SWITCH,
 ]
 
 # --- Per-zone modbus register addresses (relative to base_zone) ---
@@ -28,7 +27,6 @@ ZONE_REGISTER_MODE = 0       # operation mode (sleep bits 6-7)
 ZONE_REGISTER_SETTINGS = 4   # zone settings (heating/floor/antifreeze, angles...)
 ZONE_REGISTER_STATE = 9      # live state (demands, presence, window)
 ZONE_REGISTER_ERRORS = 13    # zone errors (low battery bit 8)
-ZONE_REGISTER_WATER = 22     # water/cooling settings
 ZONE_REGISTER_HUMIDITY = 31  # humidity 0-100
 ZONE_LOW_BATTERY_BIT = 8
 
@@ -38,8 +36,6 @@ SLEEP_BIT_OFFSET = 6
 
 # Grille opening angle options (register 4, 2-bit fields).
 GRILLE_ANGLE_OPTIONS = ["90", "50", "45", "40"]
-# Occupancy / window detection options (register 4, 2-bit fields).
-DETECTION_OPTIONS = ["desactive", "normalement_ouvert", "normalement_ferme"]
 
 
 ### Innobus Extra Attributes
