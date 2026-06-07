@@ -45,15 +45,17 @@ SELECTS = (
 
 
 def _zone_has_grille(zone):
-    """Whether the zone drives a motorized grille (vs a fancoil).
+    """Whether the zone has an adjustable motorized grille angle.
 
-    Grille angle settings only make sense on motorized-grid zones. If the
+    The angle is only adjustable when the grid runs in proportional mode
+    (multiple angles). In All/None mode the grille just opens/closes (a
+    single angle), which means the angle control is disabled. If the
     capability can't be read, default to exposing the entity.
     """
     try:
-        from airzone.innobus import LocalFancoilType
+        from airzone.innobus import GridMode
 
-        return zone.get_local_module_fancoil() == LocalFancoilType.GRID
+        return zone.get_grid_mode() == GridMode.PROPORTIONAL
     except Exception:  # noqa: BLE001
         return True
 
