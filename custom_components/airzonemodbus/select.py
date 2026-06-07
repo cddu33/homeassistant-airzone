@@ -29,6 +29,8 @@ class ZoneSelect:
     bit_offset: int
     options: List[str]
     icon: str = None
+    # Only relevant on zones driving a motorized grille (not on fancoils).
+    requires_grid: bool = False
 
 
 # 2-bit fields of the zone registers (Airzone Modbus map).
@@ -36,10 +38,24 @@ SELECTS = (
     ZoneSelect("sleep", "Veille", ZONE_REGISTER_MODE, SLEEP_BIT_OFFSET,
                SLEEP_OPTIONS, "mdi:power-sleep"),
     ZoneSelect("grille_heating", "Angle grille chaud", ZONE_REGISTER_SETTINGS, 5,
-               GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
+               GRILLE_ANGLE_OPTIONS, "mdi:angle-acute", requires_grid=True),
     ZoneSelect("grille_cooling", "Angle grille froid", ZONE_REGISTER_SETTINGS, 7,
-               GRILLE_ANGLE_OPTIONS, "mdi:angle-acute"),
+               GRILLE_ANGLE_OPTIONS, "mdi:angle-acute", requires_grid=True),
 )
+
+
+def _zone_has_grille(zone):
+    """Whether the zone drives a motorized grille (vs a fancoil).
+
+    Grille angle settings only make sense on motorized-grid zones. If the
+    capability can't be read, default to exposing the entity.
+    """
+    try:
+        from airzone.innobus import LocalFancoilType
+
+        return zone.get_local_module_fancoil() == LocalFancoilType.GRID
+    except Exception:  # noqa: BLE001
+        return True
 
 
 async def async_setup_entry(
@@ -49,11 +65,15 @@ async def async_setup_entry(
 ):
     """Set up the Airzone select entities from a config entry."""
     data = hass.data[DOMAIN][config_entry.entry_id]
-    entities = [
-        AirzoneZoneSelect(data["coordinator"], zone, description)
-        for zone in data["machine"].zones
-        for description in SELECTS
-    ]
+    entities = []
+    for zone in data["machine"].zones:
+        has_grille = _zone_has_grille(zone)
+        for description in SELECTS:
+            if description.requires_grid and not has_grille:
+                continue
+            entities.append(
+                AirzoneZoneSelect(data["coordinator"], zone, description)
+            )
     async_add_entities(entities)
 
 
