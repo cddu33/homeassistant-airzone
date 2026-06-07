@@ -279,6 +279,66 @@ class InnobusMachine(CoordinatorEntity, ClimateEntity):
 
 
     @property
+    def _pilot_zone(self):
+        """Zone used as reference for the system-wide setpoint.
+
+        Mirrors the cloud "zone 0": the master zone pilots the whole
+        installation. Falls back to the first zone if none is flagged master.
+        """
+        zones = list(self._airzone_machine.zones)
+        for zone in zones:
+            try:
+                if zone.is_master_zone():
+                    return zone
+            except Exception:  # noqa: BLE001
+                pass
+        return zones[0] if zones else None
+
+    @property
+    def current_temperature(self):
+        """Current temperature read from the pilot (master) zone."""
+        zone = self._pilot_zone
+        return zone.local_temperature if zone is not None else None
+
+    @property
+    def target_temperature(self):
+        """System setpoint, taken from the pilot (master) zone."""
+        zone = self._pilot_zone
+        return zone.signal_temperature_value if zone is not None else None
+
+    @property
+    def target_temperature_step(self):
+        """Setpoint resolution."""
+        return 0.5
+
+    @property
+    def min_temp(self):
+        """Min setpoint, shared by all zones (system register 25)."""
+        value = self.coordinator.data.get("min_temp")
+        if value is not None:
+            return value
+        zone = self._pilot_zone
+        return zone.min_temp if zone is not None else 18
+
+    @property
+    def max_temp(self):
+        """Max setpoint, shared by all zones (system register 26)."""
+        value = self.coordinator.data.get("max_temp")
+        if value is not None:
+            return value
+        zone = self._pilot_zone
+        return zone.max_temp if zone is not None else 30
+
+    def set_temperature(self, **kwargs):
+        """Apply the setpoint to every zone (acts like the cloud zone 0)."""
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if temperature is None:
+            return None
+        value = round(float(temperature), 1)
+        for zone in self._airzone_machine.zones:
+            zone.set_signal_temperature_value(value)
+
+    @property
     def preset_mode(self) -> Optional[str]:
         """Return the current preset mode, e.g., home, away, temp.
         Requires SUPPORT_PRESET_MODE.
