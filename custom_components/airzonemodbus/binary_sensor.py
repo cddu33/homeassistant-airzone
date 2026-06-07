@@ -1,4 +1,5 @@
 """Binary sensors for the Airzone Modbus integration."""
+from collections.abc import Callable
 from dataclasses import dataclass
 import logging
 from typing import Optional
@@ -29,21 +30,44 @@ class ZoneBinarySensor:
     register: int
     bit: int
     device_class: Optional[BinarySensorDeviceClass] = None
+    # Returns True if the sensor is relevant for a given zone (capability).
+    available_fn: Optional[Callable] = None
 
 
-# Read-only zone states, per the Airzone Modbus map (registers 9 and 4).
+def _relay_configured(getter):
+    """True if a presence/window relay is configured (not OFF)."""
+    from airzone.innobus import RelayConfig
+
+    return getter() != RelayConfig.OFF
+
+
+# Read-only zone states, per the Airzone Modbus map (registers 9 and 13).
 BINARY_SENSORS = (
     ZoneBinarySensor("battery", "Pile", ZONE_REGISTER_ERRORS, ZONE_LOW_BATTERY_BIT,
                      BinarySensorDeviceClass.BATTERY),
     ZoneBinarySensor("air_demand", "Demande air", ZONE_REGISTER_STATE, 7,
-                     BinarySensorDeviceClass.RUNNING),
+                     BinarySensorDeviceClass.RUNNING,
+                     available_fn=lambda z: z.is_AA_enabled()),
     ZoneBinarySensor("radiant_demand", "Demande sol", ZONE_REGISTER_STATE, 5,
-                     BinarySensorDeviceClass.RUNNING),
+                     BinarySensorDeviceClass.RUNNING,
+                     available_fn=lambda z: z.is_Floor_enabled()),
     ZoneBinarySensor("presence", "Présence", ZONE_REGISTER_STATE, 8,
-                     BinarySensorDeviceClass.OCCUPANCY),
+                     BinarySensorDeviceClass.OCCUPANCY,
+                     available_fn=lambda z: _relay_configured(z.get_presence)),
     ZoneBinarySensor("window", "Fenêtre", ZONE_REGISTER_STATE, 9,
-                     BinarySensorDeviceClass.WINDOW),
+                     BinarySensorDeviceClass.WINDOW,
+                     available_fn=lambda z: _relay_configured(z.get_window)),
 )
+
+
+def _is_relevant(zone, description: ZoneBinarySensor) -> bool:
+    """Whether a sensor applies to this zone; default to exposing it."""
+    if description.available_fn is None:
+        return True
+    try:
+        return bool(description.available_fn(zone))
+    except Exception:  # noqa: BLE001
+        return True
 
 
 async def async_setup_entry(
@@ -57,6 +81,7 @@ async def async_setup_entry(
         AirzoneZoneBinarySensor(data["coordinator"], zone, description)
         for zone in data["machine"].zones
         for description in BINARY_SENSORS
+        if _is_relevant(zone, description)
     ]
     async_add_entities(entities)
 
