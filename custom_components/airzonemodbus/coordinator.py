@@ -32,7 +32,14 @@ def _decode_name(registers):
     for reg in registers:
         chars.append((reg >> 8) & 0xFF)
         chars.append(reg & 0xFF)
-    name = bytes(c for c in chars if c).decode("ascii", errors="ignore").strip()
+    # Keep accented characters (e.g. "séjour") that ASCII would drop. The
+    # firmware may store them as UTF-8 or as single Latin-1 bytes, so try
+    # UTF-8 first and fall back to Latin-1 to avoid mojibake.
+    raw = bytes(c for c in chars if c)
+    try:
+        name = raw.decode("utf-8").strip()
+    except UnicodeDecodeError:
+        name = raw.decode("latin-1", errors="ignore").strip()
     return name or None
 
 
