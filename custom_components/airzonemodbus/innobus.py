@@ -296,9 +296,29 @@ class InnobusMachine(CoordinatorEntity, ClimateEntity):
 
     @property
     def current_temperature(self):
-        """Current temperature read from the pilot (master) zone."""
-        zone = self._pilot_zone
-        return zone.local_temperature if zone is not None else None
+        """Average current temperature across all zones."""
+        values = []
+        for zone in self._airzone_machine.zones:
+            try:
+                values.append(zone.local_temperature)
+            except Exception:  # noqa: BLE001
+                pass
+        if not values:
+            return None
+        return round(sum(values) / len(values), 1)
+
+    @property
+    def current_humidity(self):
+        """Average humidity across all zones (from the coordinator)."""
+        zones_data = self.coordinator.data.get("zones", {})
+        values = [
+            zones_data.get(zone.unique_id, {}).get("humidity")
+            for zone in self._airzone_machine.zones
+        ]
+        values = [v for v in values if v is not None]
+        if not values:
+            return None
+        return round(sum(values) / len(values))
 
     @property
     def target_temperature(self):
