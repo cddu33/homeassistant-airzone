@@ -20,6 +20,7 @@ PLATFORMS = [
     Platform.CLIMATE,
     Platform.BINARY_SENSOR,
     Platform.SELECT,
+    Platform.SENSOR,
 ]
 
 # --- Per-zone modbus register addresses (relative to base_zone) ---
