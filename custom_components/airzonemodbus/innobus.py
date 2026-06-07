@@ -24,7 +24,6 @@ from .const import (
     ZONE_FAN_MODES,
     ZONE_FAN_MODES_R,
     ZONE_HVAC_MODES,
-    ZONE_SUPPORT_FLAGS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,8 +59,27 @@ class InnobusZone(CoordinatorEntity, ClimateEntity):
 
     @property
     def supported_features(self):
-        """Return the list of supported features."""
-        return ZONE_SUPPORT_FLAGS
+        """Return the list of supported features.
+
+        Fan speed only applies to fancoil zones; grille zones have no
+        adjustable fan, so don't advertise FAN_MODE there.
+        """
+        features = ClimateEntityFeature.TARGET_TEMPERATURE
+        if self._has_fan():
+            features |= ClimateEntityFeature.FAN_MODE
+        return features
+
+    def _has_fan(self):
+        """Whether the zone exposes an adjustable fan (fancoil module)."""
+        try:
+            from airzone.innobus import LocalFancoilType
+
+            return (
+                self._airzone_zone.get_local_module_fancoil()
+                == LocalFancoilType.FANCOIL
+            )
+        except Exception:  # noqa: BLE001
+            return True
 
     @property
     def temperature_unit(self):
