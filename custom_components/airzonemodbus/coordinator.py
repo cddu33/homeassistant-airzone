@@ -61,6 +61,12 @@ class AirzoneInnobusCoordinator(DataUpdateCoordinator):
         except Exception as err:  # noqa: BLE001
             raise UpdateFailed(f"Error communicating with Airzone: {err}") from err
 
+        # The underlying library swallows modbus/socket errors and returns None
+        # instead of raising. Treat a missing machine state as a lost connection
+        # so every entity is marked unavailable.
+        if self.machine.machine_state is None:
+            raise UpdateFailed("No response from Airzone (connection lost)")
+
         data = {"min_temp": None, "max_temp": None, "zones": {}}
 
         # Global set-point min/max limits (system registers 25 and 26).

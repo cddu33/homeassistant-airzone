@@ -35,7 +35,11 @@ SENSORS = (
         "Température",
         SensorDeviceClass.TEMPERATURE,
         UnitOfTemperature.CELSIUS,
-        lambda entity: entity._airzone_zone.local_temperature,
+        lambda entity: (
+            entity._airzone_zone.local_temperature
+            if entity._airzone_zone.zone_state is not None
+            else None
+        ),
     ),
     ZoneSensor(
         "humidity",

@@ -134,6 +134,8 @@ class InnobusZone(CoordinatorEntity, ClimateEntity):
     @property
     def current_temperature(self):
         """Return the current temperature."""
+        if self._airzone_zone.zone_state is None:
+            return None
         return self._airzone_zone.local_temperature
 
     @property
